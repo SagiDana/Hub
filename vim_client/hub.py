@@ -5,14 +5,14 @@ import json
 
 
 @pynvim.plugin
-class Gravity(object):
+class Hub(object):
     def __init__(self, nvim):
         self.nvim = nvim
         self.tmp_ctags_path = "/tmp/{}.tags"
         self.server_url = 'http://localhost:1337/{}'
         self.terminal_buf_id = 0
 
-    @pynvim.autocmd('BufEnter', pattern='*.gravity', sync=True)
+    @pynvim.autocmd('BufEnter', pattern='*.hub', sync=True)
     def autocmd_bufenter(self):
         """
         This function is primarily for generating and loading ctags to the
@@ -27,9 +27,9 @@ class Gravity(object):
                 self.generate_absolute_python_ctags(loaded_applications[application], ctags_path)
                 self.load_ctags(ctags_path)
         except Exception as e:
-            self.out("Gravity: exception ({})".format(str(e)))
+            self.out("Hub: exception ({})".format(str(e)))
 
-    @pynvim.function('GravityFunc')
+    @pynvim.function('HubFunc')
     def function_handler(self, args):
         try:
             # Extract all information we might need.
@@ -49,14 +49,19 @@ class Gravity(object):
             json_to_send = {
                     'nvim_buffer': '\n'.join(nvim_buffer[:]),
                     'cursor_line': cursor_line,
-                    'cursor_column': cursor_column
+                    'cursor_column': cursor_column,
+                    'selected_start_line': selected_start_line,
+                    'selected_start_column': selected_start_column,
+                    'selected_end_line': selected_end_line,
+                    'selected_end_column': selected_end_column
                     }
             r = requests.post(self.server_url.format('execute'), json=json_to_send)
             self.out(str(r.status_code))
+            self.out(str(r.text))
         except Exception as e:
-            self.out("Gravity: exception ({})".format(str(e)))
+            self.out("Hub: exception ({})".format(str(e)))
 
-    @pynvim.function('GravityLaunchTerminal')
+    @pynvim.function('HubLaunchTerminal')
     def spawn_terminal_handler(self, args):
         try:
             command = args[0]
@@ -70,15 +75,15 @@ class Gravity(object):
             self.terminal_buf_id = self.nvim.call('bufnr','%')
 
             # launch terminal with on_exit handler
-            termopen_args = {'on_exit': 'GravityTerminalOnExit'}
+            termopen_args = {'on_exit': 'HubTerminalOnExit'}
             self.nvim.call('termopen', command, termopen_args)
 
             # enter insert mode int terminal
             self.nvim.command("normal i")
         except Exception as e:
-            self.out("Gravity: exception ({})".format(str(e)))
+            self.out("Hub: exception ({})".format(str(e)))
 
-    @pynvim.function('GravityTerminalOnExit')
+    @pynvim.function('HubTerminalOnExit')
     def terminal_on_exit_handler(self, args):
         job_id = args[0]
         code = args[1]
@@ -88,7 +93,6 @@ class Gravity(object):
         # self.out('\n'.join(terminal_lines))
         self.nvim.command("close")
 
-            
     def out(self, message):
         message = message.replace("\"", "\\\"")
         self.nvim.command(f"echo \"{message}\"")

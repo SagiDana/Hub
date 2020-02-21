@@ -63,6 +63,7 @@ def import_module(module_path, module_name):
 
         return True
     except Exception as e:
+        print("Exception: {}".format(e))
         return False
 
 
@@ -73,11 +74,15 @@ def root_handler():
 @app.route("/execute", methods=['POST'])
 def execute_handler():
     if not request.is_json:
-        return Response("missing parameter or malformed request", status=400)
+        return Response("missing parameter or malformed request", status=500)
 
-    print(request.json)
+    if "nvim_buffer" not in request.json:
+        return Response("missing parameter or malformed request", status=500)
 
-    return Response(status=200)
+    code_to_execute = request.json['nvim_buffer']
+    result = execute(code_to_execute)
+
+    return result
 
 
 @app.route("/applications", methods=['GET'])
@@ -87,7 +92,7 @@ def applications_handler():
 
 class HttpServer:
     """
-    AIO HTTP Server to handle clients.
+    Hub HTTP Server to handle clients.
     """
     def __init__(self, port=1337):
         self.port = port
@@ -95,8 +100,8 @@ class HttpServer:
 
     def start(self):
         self.flask_thread = Thread(target=app.run, kwargs={
-            'host':'127.0.0.1',
-            'port':self.port
+            'host': '127.0.0.1',
+            'port': self.port,
         })
         self.flask_thread.setDaemon(True)
         self.flask_thread.start()
